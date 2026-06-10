@@ -1,81 +1,65 @@
-# Elite Russia Admin Telegram Bot
+# Elite Russia Admin Telegram Bot v4
 
-Бот для админ-чата Elite Russia: управление ролями бота, просмотр аккаунтов в базе, выдача админки/денег, логи игры, статус сервера и соцсети проекта.
+## Что изменено
 
-## Установка
+- Владелец из `OWNER_ID` всегда имеет полный доступ к боту.
+- Добавлена команда `/myid`, чтобы быстро узнать свой Telegram ID.
+- `/access` теперь умеет выдавать доступ тремя способами:
+  - `/access @username manager`
+  - `/access 123456789 manager`
+  - ответом на сообщение человека: `/access manager`
+- `owner` нельзя выдать через чат. Полный владелец задаётся только через `.env` в `OWNER_ID`.
+- Для полного управления через чат используй доступ `manager`.
 
-```bash
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-copy .env.example .env
-python bot.py
-```
+## Доступы
 
-В `.env` заполни:
-- `BOT_TOKEN` — токен от @BotFather
-- `OWNER_ID` — твой Telegram ID
-- `ADMIN_GROUP_ID` — ID админ-группы
-- `GAME_DB_PASSWORD` — пароль от MySQL
-
-Пароль и токен нельзя хранить в `bot.py` и нельзя кидать в чат.
-
-## Главное
-
-Бот работает только с теми таблицами/колонками, которые указаны в `config.json`. Если в твоей базе таблица игроков называется не `accounts`, а например `users`, поменяй:
+Смотри `config.json`:
 
 ```json
-"accounts_table": "accounts",
-"login_column": "name",
-"admin_column": "admin",
-"money_column": "money"
+"bot_access": {
+  "owner": 100,
+  "manager": 80,
+  "moderator": 40,
+  "viewer": 10,
+  "none": 0
+}
 ```
 
-Для логов тоже настрой:
+## Примеры
 
-```json
-"logs_table": "logs",
-"logs_text_column": "text",
-"logs_time_column": "time"
+Выдать доступ по username:
+
+```text
+/access @limyzinc manager
 ```
 
-## Команды
+Выдать доступ по Telegram ID:
 
-- `/help` — список команд
-- `/me` — моя роль
-- `/users` — известные пользователи группы
-- `/settitle @user Главный администратор` — выдать название
-- `/setrole @user helper|admin|senior_admin|chief_admin` — выдать права на управление ботом
-- `/deladmin @user` — снять права бота
-- `/botroles` — роли и доступы
-- `/server` — статус VPS и подключение к MySQL
-- `/account Nick_Name` — посмотреть аккаунт игрока
-- `/accounts часть_ника` — поиск аккаунтов
-- `/giveadmin Nick_Name 5 причина` — выдать админку в игре
-- `/givemoney Nick_Name 100000 причина` — выдать деньги в игре
-- `/gamelogs` — последние логи игры
-- `/gamelogs Nick_Name` — поиск по логам
-- `/audit` — кто что выдавал через бота
-- `/social` — соцсети проекта
-- `/actions` — список разрешённых серверных действий
-- `/do restart_game` — выполнить разрешённое действие из allowlist
+```text
+/access 8464597898 manager
+```
 
-## Права
+Выдать доступ ответом на сообщение:
 
-Настраиваются в `config.json`:
+```text
+/access manager
+```
 
-- `owner` — владелец, задаётся через `OWNER_ID`
-- `chief_admin` — может выдавать права бота, админку и деньги
-- `senior_admin` — средний уровень
-- `admin` — просмотр логов
-- `helper` — статус, пользователи, аккаунты
-- `user` — без прав
+Снять доступ:
 
-## Безопасность
+```text
+/access @username none
+```
 
-- Нет свободной команды `/exec`.
-- Все действия логируются в `audit_log`.
-- Выдача денег ограничена `max_money_per_command`.
-- Уровень админки ограничен `max_admin_level`.
-- Роль `owner` нельзя снять или выдать через чат.
-- Telegram Bot API не отдаёт полный список участников группы. `/users` показывает тех, кто писал после добавления бота.
+Посмотреть себя:
+
+```text
+/me
+/myid
+```
+
+## Важно
+
+Если у тебя показывает `none / 0`, значит `OWNER_ID` в `.env` не совпадает с твоим настоящим Telegram ID. Узнай ID через `/myid` или @userinfobot, впиши его в `.env` и перезапусти бота.
+
+Не кидай `.env` никому: там токен бота и пароль от MySQL.

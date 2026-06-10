@@ -167,6 +167,63 @@ def find_mentioned_user(text: str):
     return row
 
 
+def find_user_by_id(tg_id: int):
+    with bot_db() as conn:
+        return conn.execute("SELECT * FROM telegram_users WHERE tg_id=?", (tg_id,)).fetchone()
+
+
+def ensure_tg_user(tg_id: int, username: str = "", first_name: str = ""):
+    access = "owner" if tg_id == OWNER_ID else "none"
+    with bot_db() as conn:
+        current = conn.execute("SELECT access FROM telegram_users WHERE tg_id=?", (tg_id,)).fetchone()
+        if current and tg_id != OWNER_ID:
+            access = current["access"]
+        conn.execute("""
+        INSERT INTO telegram_users(tg_id, username, first_name, access, last_seen)
+        VALUES(?,?,?,?,CURRENT_TIMESTAMP)
+        ON CONFLICT(tg_id) DO UPDATE SET
+            username=CASE WHEN excluded.username != '' THEN excluded.username ELSE telegram_users.username END,
+            first_name=CASE WHEN excluded.first_name != '' THEN excluded.first_name ELSE telegram_users.first_name END,
+            last_seen=CURRENT_TIMESTAMP
+        """, (tg_id, username or "", first_name or "", access))
+    return find_user_by_id(tg_id)
+
+
+def resolve_access_target(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Кого меняем в /access:
+    1) reply на сообщение: /access manager
+    2) username: /access @username manager
+    3) Telegram ID: /access 123456789 manager
+    Возвращает (row, new_access, human_name).
+    """
+    args = context.args or []
+    if update.message and update.message.reply_to_message:
+        if len(args) < 1:
+            return None, None, None
+        u = update.message.reply_to_message.from_user
+        row = ensure_tg_user(u.id, u.username or "", u.first_name or "")
+        return row, args[0].strip(), f"@{u.username}" if u.username else str(u.id)
+
+    if len(args) < 2:
+        return None, None, None
+
+    target_raw = args[0].strip()
+    new_access = args[1].strip()
+
+    if target_raw.startswith("@"):
+        row = find_mentioned_user(target_raw)
+        human = target_raw
+        return row, new_access, human
+
+    if re.fullmatch(r"\d{5,20}", target_raw):
+        tg_id = int(target_raw)
+        row = ensure_tg_user(tg_id)
+        return row, new_access, str(tg_id)
+
+    return None, new_access, target_raw
+
+
 def format_access_list() -> str:
     return "\n".join([f"• {name} — {level}" for name, level in sorted(ACCESS.items(), key=lambda x: -x[1])])
 
@@ -180,7 +237,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• /server — онлайн и работает ли сервер\n"
         "• /role Nick_Name Главный разработчик — записать роль игроку свободным текстом\n"
         "• /getrole Nick_Name — посмотреть роль игрока\n"
-        "• /access @user manager — выдать права на управление ботом\n"
+        "• /access @user manager — выдать доступ к боту\n"
+        "• /access 123456789 manager — выдать доступ по Telegram ID\n"
+        "• ответ на сообщение: /access manager — выдать доступ человеку\n"
         "• /account Nick_Name — аккаунт игрока\n"
         "• /giveadmin Nick_Name 5 причина — выдать админку\n"
         "• /givemoney Nick_Name 100000 причина — выдать деньги\n"
@@ -203,35 +262,58 @@ async def access_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await guard(update, "manage_bot_access"):
         return
 
-    if len(context.args) < 2:
+    target, new_access, human = resolve_access_target(update, context)
+
+    if not target or not new_access:
         await update.message.reply_text(
-            "Использование:\n/access @username manager\n/access @username moderator\n/access @username viewer\n/access @username none\n\n"
+            "Использование:\n"
+            "/access @username manager\n"
+            "/access 123456789 manager\n"
+            "Ответом на сообщение: /access manager\n\n"
+            "Снять доступ:\n"
+            "/access @username none\n\n"
             f"Доступы:\n{format_access_list()}\n\n"
-            "Важно: человек должен хотя бы раз написать в чат после добавления бота."
+            "Важно: по @username человек должен хотя бы раз написать в чат. По Telegram ID можно выдать сразу."
         )
         return
 
-    target = find_mentioned_user(update.message.text)
-    new_access = context.args[1].strip()
-
-    if not target:
-        await update.message.reply_text("Не нашёл пользователя. Пусть он напишет любое сообщение в этот чат.")
-        return
     if new_access not in ACCESS:
         await update.message.reply_text(f"Нет такого доступа. Доступные:\n{format_access_list()}")
         return
-    if int(target["tg_id"]) == OWNER_ID:
-        await update.message.reply_text("Владельцу нельзя менять доступ через чат.")
+
+    target_id = int(target["tg_id"])
+
+    if target_id == OWNER_ID:
+        await update.message.reply_text("Владельцу нельзя менять доступ через чат. У владельца всегда полный доступ.")
         return
+
     if new_access == "owner":
-        await update.message.reply_text("Owner задаётся только через OWNER_ID в .env.")
+        await update.message.reply_text("Owner задаётся только через OWNER_ID в .env. Для полного управления через чат используй manager.")
         return
 
     with bot_db() as conn:
-        conn.execute("UPDATE telegram_users SET access=? WHERE tg_id=?", (new_access, target["tg_id"]))
+        conn.execute("UPDATE telegram_users SET access=? WHERE tg_id=?", (new_access, target_id))
 
-    audit(update.effective_user, "access", f"{target['username']} -> {new_access}")
-    await update.message.reply_text(f"✅ @{target['username']} получил доступ к боту: {new_access}")
+    username = target["username"] or ""
+    shown = f"@{username}" if username else (human or str(target_id))
+    audit(update.effective_user, "access", f"{shown} ({target_id}) -> {new_access}")
+    await update.message.reply_text(
+        f"✅ Доступ к боту выдан\n"
+        f"👤 Пользователь: {shown}\n"
+        f"🆔 Telegram ID: {target_id}\n"
+        f"🔑 Доступ: {new_access} / {access_level(new_access)}"
+    )
+
+
+async def myid_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await guard(update):
+        return
+    u = update.effective_user
+    await update.message.reply_text(
+        f"👤 Ты: @{u.username or u.id}\n"
+        f"🆔 Telegram ID: {u.id}\n"
+        f"🔑 Доступ: {access_name(u.id)} / {access_level(access_name(u.id))}"
+    )
 
 
 async def users_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -588,6 +670,7 @@ def main():
 
     app.add_handler(CommandHandler(["start", "help"], start))
     app.add_handler(CommandHandler("me", me))
+    app.add_handler(CommandHandler("myid", myid_cmd))
     app.add_handler(CommandHandler("access", access_cmd))
     app.add_handler(CommandHandler("users", users_cmd))
 
