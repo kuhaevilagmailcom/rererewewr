@@ -1,65 +1,56 @@
-# Elite Russia Admin Telegram Bot v4
+# Elite Russia Team Bot
 
-## Что изменено
+Упрощённый Telegram-бот только для команды проекта.
 
-- Владелец из `OWNER_ID` всегда имеет полный доступ к боту.
-- Добавлена команда `/myid`, чтобы быстро узнать свой Telegram ID.
-- `/access` теперь умеет выдавать доступ тремя способами:
-  - `/access @username manager`
-  - `/access 123456789 manager`
-  - ответом на сообщение человека: `/access manager`
-- `owner` нельзя выдать через чат. Полный владелец задаётся только через `.env` в `OWNER_ID`.
-- Для полного управления через чат используй доступ `manager`.
-
-## Доступы
-
-Смотри `config.json`:
-
-```json
-"bot_access": {
-  "owner": 100,
-  "manager": 80,
-  "moderator": 40,
-  "viewer": 10,
-  "none": 0
-}
-```
-
-## Примеры
-
-Выдать доступ по username:
+## Команды
 
 ```text
-/access @limyzinc manager
+/setrole @username название роли
+/setrole 123456789 название роли
+/users
 ```
 
-Выдать доступ по Telegram ID:
+Пример:
 
 ```text
-/access 8464597898 manager
+/setrole @dskaksda разработчик
+/setrole 123456789 основатель
 ```
 
-Выдать доступ ответом на сообщение:
+`/users` покажет:
 
 ```text
-/access manager
+👥 Команда проекта
+@dskaksda — разработчик
+123456789 — основатель
+
+Всего в команде: 2 человек
 ```
 
-Снять доступ:
+## Доступ
 
-```text
-/access @username none
+В `.env` впиши Telegram ID тех, кто может выдавать роли:
+
+```env
+ROLE_MANAGER_IDS=123456789,987654321
 ```
 
-Посмотреть себя:
+Если нужен только ты — оставь только свой ID.
 
-```text
-/me
-/myid
+## Настройка
+
+1. Переименуй `.env.example` в `.env`.
+2. Впиши `BOT_TOKEN`.
+3. Впиши `ADMIN_GROUP_ID`, если бот должен работать только в одном чате. Если не знаешь ID группы — оставь `0`.
+4. Впиши `ROLE_MANAGER_IDS`.
+5. Установи зависимости:
+
+```bash
+pip install -r requirements.txt
 ```
 
-## Важно
+6. Запусти:
 
-Если у тебя показывает `none / 0`, значит `OWNER_ID` в `.env` не совпадает с твоим настоящим Telegram ID. Узнай ID через `/myid` или @userinfobot, впиши его в `.env` и перезапусти бота.
-
-Не кидай `.env` никому: там токен бота и пароль от MySQL.
+```bash
+python main.py
+```
