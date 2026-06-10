@@ -1,22 +1,50 @@
 {
-  "roles": {
-    "owner": 100,
-    "chief_admin": 80,
-    "senior_admin": 60,
-    "admin": 40,
-    "helper": 20,
-    "user": 0
+  "project": {
+    "name": "Elite Russia",
+    "telegram": "@eliterussian",
+    "vk": "https://vk.com/eliterussiab",
+    "discord": "https://discord.gg/kPCR4daxRy",
+    "tiktok": "https://www.tiktok.com/@eliterussiab",
+    "youtube": "https://www.youtube.com/@%D0%9B%D0%B8%D0%BC%D1%83%D0%B7%D0%B8%D0%BD%D0%BE%D0%B2",
+    "site": "http://elite-crmp.ru/"
   },
-  "allowed_actions": {
-    "restart_game": {
-      "min_role": "chief_admin",
-      "description": "Перезапуск игрового сервера",
-      "command": "echo Restart game server here"
-    },
-    "status_game": {
-      "min_role": "helper",
-      "description": "Проверка статуса игрового сервера",
-      "command": "echo Game server status here"
-    }
+  "bot_access": {
+    "owner": 100,
+    "manager": 80,
+    "moderator": 40,
+    "viewer": 10,
+    "none": 0
+  },
+  "permissions": {
+    "manage_bot_access": 100,
+    "set_player_role": 80,
+    "view_server": 10,
+    "view_accounts": 10,
+    "view_game_logs": 40,
+    "give_game_admin": 80,
+    "give_money": 80
+  },
+  "game_db": {
+    "accounts_table": "accounts",
+    "id_column": "id",
+    "login_column": "name",
+    "admin_column": "admin",
+    "cash_column": "cash",
+    "bank_column": "bank",
+    "level_column": "level",
+    "online_column": "online",
+    "ip_column": "ip",
+    "reg_ip_column": "regip",
+    "mail_column": "mail",
+    "logs_table": "admin_logs",
+    "logs_id_column": "id",
+    "logs_text_column": "text",
+    "logs_time_column": "date"
+  },
+  "limits": {
+    "max_admin_level": 10,
+    "max_money_per_command": 5000000,
+    "max_log_rows": 20,
+    "max_account_rows": 20
   }
 }
