@@ -1,0 +1,22 @@
+{
+  "roles": {
+    "owner": 100,
+    "chief_admin": 80,
+    "senior_admin": 60,
+    "admin": 40,
+    "helper": 20,
+    "user": 0
+  },
+  "allowed_actions": {
+    "restart_game": {
+      "min_role": "chief_admin",
+      "description": "Перезапуск игрового сервера",
+      "command": "echo Restart game server here"
+    },
+    "status_game": {
+      "min_role": "helper",
+      "description": "Проверка статуса игрового сервера",
+      "command": "echo Game server status here"
+    }
+  }
+}
